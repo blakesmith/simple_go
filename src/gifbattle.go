@@ -160,6 +160,7 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-type", "image/gif")
+	w.Header().Set("Cache-Control", "max-age=3600, public")
 	w.Write(img.Buffer.Bytes())
 }
 
