@@ -126,7 +126,13 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("image")
 
-	checkError(err)
+	if err != nil {
+		log.Println(err.Error())
+		http.Redirect(w, r, "/", http.StatusFound)
+
+		return
+	}
+
 	defer file.Close()
 
 	var buf bytes.Buffer
@@ -155,12 +161,6 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-type", "image/gif")
 	w.Write(img.Buffer.Bytes())
-}
-
-func checkError(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 func main() {
