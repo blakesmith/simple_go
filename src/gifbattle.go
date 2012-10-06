@@ -137,9 +137,9 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 	}
 
-	resp := imageStore.Put(keyFor(buf.Bytes()), img)
+	imageStore.Put(keyFor(buf.Bytes()), img)
 
-	fmt.Fprintf(w, resp)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func displayImage(w http.ResponseWriter, r *http.Request) {

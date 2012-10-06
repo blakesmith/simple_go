@@ -8,9 +8,9 @@
                 <input type="file" name="image">
                 <input type="submit" value="Upload">
         </form>
-	<div id="gifs">
+	<ul id="gifs">
 	  {{range .}}
-	  <img src="/img?key={{.}}" />
+	  <li><img src="/img?key={{.}}" /></li>
 	  {{end}}
 	</div>
 </body>
