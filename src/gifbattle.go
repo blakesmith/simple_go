@@ -66,27 +66,30 @@ func (store *ImageStore) Start() {
 }
 
 func (store *ImageStore) Put(key string, img *Img) string {
-	request := new(PutImageRequest)
-	request.Key = key
-	request.ResponseChan = make(chan string)
-	request.Image = img
+	request := &PutImageRequest{
+		Key: key,
+		ResponseChan: make(chan string),
+		Image: img,
+	}
 	store.putChannel <- request
 
 	return <-request.ResponseChan
 }
 
 func (store *ImageStore) Get(key string) *Img {
-	request := new(GetImageRequest)
-	request.Key = key
-	request.ResponseChan = make(chan *Img)
+	request := &GetImageRequest{
+		Key: key,
+		ResponseChan: make(chan *Img),
+	}
 	store.getChannel <- request
 
 	return <-request.ResponseChan
 }
 
 func (store *ImageStore) All() []string {
-	request := new(AllImageRequest)
-	request.ResponseChan = make(chan []string)
+	request := &AllImageRequest{
+		ResponseChan: make(chan []string),
+	}
 	store.allChannel <- request
 
 	return <-request.ResponseChan
