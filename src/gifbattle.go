@@ -16,12 +16,69 @@ type Img struct {
 	Original image.Image
 }
 
+type ImageStore struct {
+	Images     map[string]*Img
+	getChannel chan *GetImageRequest
+	putChannel chan *PutImageRequest
+}
+
+type GetImageRequest struct {
+	Key          string
+	ResponseChan chan *Img
+}
+
+type PutImageRequest struct {
+	Key          string
+	Image        *Img
+	ResponseChan chan string
+}
+
 var (
-	AllImages map[string]*Img = make(map[string]*Img)
-	templates                 = template.Must(template.ParseFiles(
+	imageStore = NewImageStore()
+	templates  = template.Must(template.ParseFiles(
 		"upload.html",
 	))
 )
+
+func (store *ImageStore) Start() {
+	for {
+		select {
+		case request := <-store.getChannel:
+			request.ResponseChan <- store.Images[request.Key]
+		case request := <-store.putChannel:
+			store.Images[request.Key] = request.Image
+			request.ResponseChan <- fmt.Sprintf("%s: %s", "OK", request.Key)
+		}
+	}
+}
+
+func (store *ImageStore) Put(key string, img *Img) string {
+	request := new(PutImageRequest)
+	request.Key = key
+	request.ResponseChan = make(chan string)
+	request.Image = img
+	store.putChannel <- request
+
+	return <-request.ResponseChan
+}
+
+func (store *ImageStore) Get(key string) *Img {
+	request := new(GetImageRequest)
+	request.Key = key
+	request.ResponseChan = make(chan *Img)
+	store.getChannel <- request
+
+	return <-request.ResponseChan
+}
+
+func NewImageStore() *ImageStore {
+	store := new(ImageStore)
+	store.Images = make(map[string]*Img)
+	store.getChannel = make(chan *GetImageRequest)
+	store.putChannel = make(chan *PutImageRequest)
+
+	return store
+}
 
 func keyFor(b []byte) string {
 	sha := sha1.New()
@@ -57,10 +114,9 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 	}
 
-	AllImages[keyFor(buf.Bytes())] = img
+	resp := imageStore.Put(keyFor(buf.Bytes()), img)
 
-	log.Println(AllImages)
-	fmt.Fprintf(w, "OK")
+	fmt.Fprintf(w, resp)
 }
 
 func displayImage(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +124,7 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 
 	key := r.Form.Get("key")
 
-	img := AllImages[key]
+	img := imageStore.Get(key)
 
 	if img == nil {
 		http.Error(w, "Image not found!", 400)
@@ -87,6 +143,8 @@ func checkError(err error) {
 }
 
 func main() {
+	go imageStore.Start()
+
 	log.Println("Listening for requests...")
 
 	http.HandleFunc("/img", displayImage)
