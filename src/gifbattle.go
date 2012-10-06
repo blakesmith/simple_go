@@ -20,6 +20,7 @@ type ImageStore struct {
 	Images     map[string]*Img
 	getChannel chan *GetImageRequest
 	putChannel chan *PutImageRequest
+	allChannel chan *AllImageRequest
 }
 
 type GetImageRequest struct {
@@ -33,6 +34,10 @@ type PutImageRequest struct {
 	ResponseChan chan string
 }
 
+type AllImageRequest struct {
+	ResponseChan chan []string
+}
+
 var (
 	imageStore = NewImageStore()
 	templates  = template.Must(template.ParseFiles(
@@ -43,6 +48,14 @@ var (
 func (store *ImageStore) Start() {
 	for {
 		select {
+		case request := <-store.allChannel:
+			keys := make([]string, 0)
+
+			for key := range store.Images {
+				keys = append(keys, key)
+			}
+
+			request.ResponseChan <- keys
 		case request := <-store.getChannel:
 			request.ResponseChan <- store.Images[request.Key]
 		case request := <-store.putChannel:
@@ -71,11 +84,20 @@ func (store *ImageStore) Get(key string) *Img {
 	return <-request.ResponseChan
 }
 
+func (store *ImageStore) All() []string {
+	request := new(AllImageRequest)
+	request.ResponseChan = make(chan []string)
+	store.allChannel <- request
+
+	return <-request.ResponseChan
+}
+
 func NewImageStore() *ImageStore {
 	store := new(ImageStore)
 	store.Images = make(map[string]*Img)
 	store.getChannel = make(chan *GetImageRequest)
 	store.putChannel = make(chan *PutImageRequest)
+	store.allChannel = make(chan *AllImageRequest)
 
 	return store
 }
@@ -96,7 +118,8 @@ func decodeGif(buf bytes.Buffer) (*Img, error) {
 
 func uploadImage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		templates.ExecuteTemplate(w, "upload.html", nil)
+		images := imageStore.All()
+		templates.ExecuteTemplate(w, "upload.html", images)
 
 		return
 	}
@@ -121,9 +144,7 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 
 func displayImage(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-
 	key := r.Form.Get("key")
-
 	img := imageStore.Get(key)
 
 	if img == nil {
