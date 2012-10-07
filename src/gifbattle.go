@@ -154,7 +154,7 @@ func decodeGif(buf bytes.Buffer) (*Img, error) {
 
 	g, err := gif.Decode(&newBuf)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err.Error())
 
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func decodeGif(buf bytes.Buffer) (*Img, error) {
 	var pngImage bytes.Buffer
 	err = png.Encode(&pngImage, g)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err.Error())
 
 		return nil, err
 	}
@@ -243,7 +243,9 @@ func streamHandler(ws *websocket.Conn) {
 		log.Printf("Sending message: %s", imgKey)
 		err := websocket.Message.Send(ws, imgKey)
 		if err != nil {
-			log.Fatal(err.Error())
+			// TODO: Remove listener
+			log.Println("Websocket error")
+			log.Println(err.Error())
 
 			break
 		}
