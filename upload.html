@@ -10,36 +10,37 @@
 	  var output, websocket;
 	  
 	  function showMessage(key) {
-	  var li = document.createElement("li");
-	  li.innerHTML = "<a href='/img?key="+key+"'><img onmouseover='swapAnimated(this)' onmouseout='swapSnapshot(this)' src='/img?key="+key+"&thumb=true' /></a>";
-	  output.appendChild(li, output.firstChild);
+	      var li = document.createElement("li");
+	      li.innerHTML = "<a href='/img?key="+key+"'><img onmouseover='swapAnimated(this)' onmouseout='swapSnapshot(this)' src='/img?key="+key+"&thumb=true' /></a>";
+	      output.appendChild(li, output.firstChild);
 	  }
 	  
 	  function onMessage(e) {
-	  console.log("Message received");
-	  showMessage(e.data);
+	      console.log("Message received");
+	      showMessage(e.data);
 	  }
 	  
 	  function onClose() {
-	  console.log("Lost connection");
+	      console.log("Lost connection");
 	  }
 	  
 	  function init() {
-	  output = document.getElementById("gifs");
-	  
-	  websocket = new WebSocket("ws://localhost:5555/stream");
-	  websocket.onmessage = onMessage;
-	  websocket.onclose = onClose;
+	      output = document.getElementById("gifs");
+	      
+	      websocket = new WebSocket("ws://localhost:5555/stream");
+	      websocket.onmessage = onMessage;
+	      websocket.onclose = onClose;
 	  }
 
 	  function swapAnimated(img) {
-	  var attr = img.getAttribute("src");
-	  img.setAttribute("src", attr.slice(0, -10));
+	      // Total hack, but should suffice for the demo
+	      var attr = img.getAttribute("src");
+	      img.setAttribute("src", attr.slice(0, -10));
 	  }
 
 	  function swapSnapshot(img) {
-	  var attr = img.getAttribute("src");
-	  img.setAttribute("src", attr + "thumb=true");
+	      var attr = img.getAttribute("src");
+	      img.setAttribute("src", attr + "thumb=true");
 	  }
 	  
 	  window.addEventListener("load", init, false);
