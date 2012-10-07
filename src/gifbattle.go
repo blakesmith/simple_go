@@ -19,7 +19,8 @@ type Img struct {
 }
 
 type ImageStore struct {
-	Images     map[string]*Img
+	ImageIndex map[string]*Img
+	ImageKeys  []string
 	getChannel chan *GetImageRequest
 	putChannel chan *PutImageRequest
 	allChannel chan *AllImageRequest
@@ -61,17 +62,12 @@ func (store *ImageStore) Start() {
 	for {
 		select {
 		case request := <-store.allChannel:
-			keys := make([]string, 0)
-
-			for key := range store.Images {
-				keys = append(keys, key)
-			}
-
-			request.ResponseChan <- keys
+			request.ResponseChan <- store.ImageKeys
 		case request := <-store.getChannel:
-			request.ResponseChan <- store.Images[request.Key]
+			request.ResponseChan <- store.ImageIndex[request.Key]
 		case request := <-store.putChannel:
-			store.Images[request.Key] = request.Image
+			store.ImageIndex[request.Key] = request.Image
+			store.ImageKeys = append(store.ImageKeys, request.Key)
 			request.ResponseChan <- fmt.Sprintf("%s: %s", "OK", request.Key)
 		}
 	}
@@ -109,7 +105,8 @@ func (store *ImageStore) All() []string {
 
 func NewImageStore() *ImageStore {
 	store := new(ImageStore)
-	store.Images = make(map[string]*Img)
+	store.ImageIndex = make(map[string]*Img)
+	store.ImageKeys = make([]string, 0)
 
 	// A channel for each request type
 	store.getChannel = make(chan *GetImageRequest)
