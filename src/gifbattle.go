@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"code.google.com/p/go.net/websocket"
 	"crypto/sha1"
 	"fmt"
 	"image/gif"
@@ -39,9 +40,18 @@ type AllImageRequest struct {
 	ResponseChan chan []string
 }
 
+type Broadcaster struct {
+	Listeners []*Listener
+}
+
+type Listener struct {
+	Stream chan string
+}
+
 var (
-	imageStore = NewImageStore()
-	templates  = template.Must(template.ParseFiles(
+	imageStore  = NewImageStore()
+	broadcaster = NewBroadcaster()
+	templates   = template.Must(template.ParseFiles(
 		"upload.html",
 	))
 )
@@ -109,6 +119,28 @@ func NewImageStore() *ImageStore {
 	return store
 }
 
+func NewBroadcaster() *Broadcaster {
+	return &Broadcaster{
+		Listeners: make([]*Listener, 0),
+	}
+}
+
+func (broadcaster *Broadcaster) NewListener() *Listener {
+	listener := &Listener{
+		Stream: make(chan string),
+	}
+
+	broadcaster.Listeners = append(broadcaster.Listeners, listener)
+
+	return listener
+}
+
+func (broadcaster *Broadcaster) Send(key string) {
+	for _, listener := range broadcaster.Listeners {
+		listener.Stream <- key
+	}
+}
+
 func keyFor(b []byte) string {
 	sha := sha1.New()
 	sha.Write(b)
@@ -170,8 +202,13 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 	}
 
+	key := keyFor(buf.Bytes())
+
 	// Store the image in memory
-	imageStore.Put(keyFor(buf.Bytes()), img)
+	imageStore.Put(key, img)
+
+	// Broadcast new image to everyone
+	broadcaster.Send(key)
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -202,12 +239,27 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func streamHandler(ws *websocket.Conn) {
+	listener := broadcaster.NewListener()
+	for {
+		imgKey := <-listener.Stream
+		log.Printf("Sending message: %s", imgKey)
+		err := websocket.Message.Send(ws, imgKey)
+		if err != nil {
+			log.Fatal(err.Error())
+
+			break
+		}
+	}
+}
+
 func main() {
 	go imageStore.Start()
 
 	log.Println("Listening for requests...")
 
-	http.HandleFunc("/img", displayImage)
 	http.HandleFunc("/", uploadImage)
+	http.HandleFunc("/img", displayImage)
+	http.Handle("/stream", websocket.Handler(streamHandler))
 	http.ListenAndServe(":5555", nil)
 }

@@ -1,6 +1,34 @@
 <html>
 <head>
         <title>Gif battle!</title>
+	<script>
+	  var output, websocket;
+	  
+	  function showMessage(key) {
+	  var li = document.createElement("li");
+	  li.innerHTML = "<a href='/img?key="+key+"'><img src='/img?key="+key+"&thumb=true' /></a>";
+	  output.appendChild(li, output.firstChild);
+	  }
+	  
+	  function onMessage(e) {
+	  console.log("Message received");
+	  showMessage(e.data);
+	  }
+	  
+	  function onClose() {
+	  console.log("Lost connection");
+	  }
+	  
+	  function init() {
+	  output = document.getElementById("gifs");
+	  
+	  websocket = new WebSocket("ws://localhost:5555/stream");
+	  websocket.onmessage = onMessage;
+	  websocket.onclose = onClose;
+	  }
+	  
+	  window.addEventListener("load", init, false);
+	</script>
 </head>
 <body>
         <p>Upload an image:</p>
