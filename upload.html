@@ -1,12 +1,17 @@
 <html>
 <head>
         <title>Gif battle!</title>
+	<style type="text/css">
+	  ul#gifs {
+  	  list-style-type: none;
+	  }
+	</style>
 	<script>
 	  var output, websocket;
 	  
 	  function showMessage(key) {
 	  var li = document.createElement("li");
-	  li.innerHTML = "<a href='/img?key="+key+"'><img src='/img?key="+key+"&thumb=true' /></a>";
+	  li.innerHTML = "<a href='/img?key="+key+"'><img onmouseover='swapAnimated(this)' onmouseout='swapSnapshot(this)' src='/img?key="+key+"&thumb=true' /></a>";
 	  output.appendChild(li, output.firstChild);
 	  }
 	  
@@ -26,6 +31,16 @@
 	  websocket.onmessage = onMessage;
 	  websocket.onclose = onClose;
 	  }
+
+	  function swapAnimated(img) {
+	  var attr = img.getAttribute("src");
+	  img.setAttribute("src", attr.slice(0, -10));
+	  }
+
+	  function swapSnapshot(img) {
+	  var attr = img.getAttribute("src");
+	  img.setAttribute("src", attr + "thumb=true");
+	  }
 	  
 	  window.addEventListener("load", init, false);
 	</script>
@@ -38,7 +53,7 @@
         </form>
 	<ul id="gifs">
 	  {{range .}}
-	  <li><a href="/img?key={{.}}"><img src="/img?key={{.}}&thumb=true" /></a></li>
+	  <li><a href="/img?key={{.}}"><img onmouseover="swapAnimated(this)" onmouseout="swapSnapshot(this)" src="/img?key={{.}}&thumb=true" /></a></li>
 	  {{end}}
 	</div>
 </body>
