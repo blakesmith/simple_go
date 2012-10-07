@@ -47,6 +47,7 @@ var (
 )
 
 func (store *ImageStore) Start() {
+	// Loop forever, processing each type of request
 	for {
 		select {
 		case request := <-store.allChannel:
@@ -99,6 +100,8 @@ func (store *ImageStore) All() []string {
 func NewImageStore() *ImageStore {
 	store := new(ImageStore)
 	store.Images = make(map[string]*Img)
+
+	// A channel for each request type
 	store.getChannel = make(chan *GetImageRequest)
 	store.putChannel = make(chan *PutImageRequest)
 	store.allChannel = make(chan *AllImageRequest)
@@ -155,27 +158,31 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
+	// Close the file at the end of this function
 	defer file.Close()
 
 	var buf bytes.Buffer
 	io.Copy(&buf, file)
 
+	// Snapshot and extract image
 	img, err := decodeGif(buf)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 	}
 
+	// Store the image in memory
 	imageStore.Put(keyFor(buf.Bytes()), img)
 
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func displayImage(w http.ResponseWriter, r *http.Request) {
+	// Read the url params
 	r.ParseForm()
 	key := r.Form.Get("key")
 	img := imageStore.Get(key)
 
+	// No image specified
 	if img == nil {
 		http.Error(w, "Image not found!", 400)
 
@@ -184,9 +191,11 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "max-age=3600, public")
 
 	if r.Form.Get("thumb") == "true" {
+		// Serve the still thumbnail
 		w.Header().Set("Content-type", "image/gif")
 		w.Write(img.Snapshot.Bytes())
 	} else {
+		// Serve the animated gif
 		w.Header().Set("Content-type", "image/png")
 		w.Write(img.Original.Bytes())
 	}
