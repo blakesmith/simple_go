@@ -10,7 +10,7 @@
         </form>
 	<ul id="gifs">
 	  {{range .}}
-	  <li><img src="/img?key={{.}}" /></li>
+	  <li><a href="/img?key={{.}}"><img src="/img?key={{.}}&thumb=true" /></a></li>
 	  {{end}}
 	</div>
 </body>
