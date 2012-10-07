@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"fmt"
-	"image"
+	"image/gif"
+	"image/png"
 	"io"
 	"log"
 	"net/http"
@@ -12,8 +13,8 @@ import (
 )
 
 type Img struct {
-	Buffer   bytes.Buffer
-	Original image.Image
+	Original bytes.Buffer
+	Snapshot bytes.Buffer
 }
 
 type ImageStore struct {
@@ -67,9 +68,9 @@ func (store *ImageStore) Start() {
 
 func (store *ImageStore) Put(key string, img *Img) string {
 	request := &PutImageRequest{
-		Key: key,
+		Key:          key,
 		ResponseChan: make(chan string),
-		Image: img,
+		Image:        img,
 	}
 	store.putChannel <- request
 
@@ -78,7 +79,7 @@ func (store *ImageStore) Put(key string, img *Img) string {
 
 func (store *ImageStore) Get(key string) *Img {
 	request := &GetImageRequest{
-		Key: key,
+		Key:          key,
 		ResponseChan: make(chan *Img),
 	}
 	store.getChannel <- request
@@ -114,7 +115,26 @@ func keyFor(b []byte) string {
 
 func decodeGif(buf bytes.Buffer) (*Img, error) {
 	image := new(Img)
-	image.Buffer = buf
+	image.Original = buf
+
+	var newBuf bytes.Buffer
+	io.Copy(&newBuf, &buf)
+
+	g, err := gif.Decode(&newBuf)
+	if err != nil {
+		log.Fatal(err)
+
+		return nil, err
+	}
+
+	var pngImage bytes.Buffer
+	err = png.Encode(&pngImage, g)
+	if err != nil {
+		log.Fatal(err)
+
+		return nil, err
+	}
+	image.Snapshot = pngImage
 
 	return image, nil
 }
@@ -161,10 +181,16 @@ func displayImage(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
-	w.Header().Set("Content-type", "image/gif")
 	w.Header().Set("Cache-Control", "max-age=3600, public")
-	w.Write(img.Buffer.Bytes())
+
+	if r.Form.Get("thumb") == "true" {
+		w.Header().Set("Content-type", "image/gif")
+		w.Write(img.Snapshot.Bytes())
+	} else {
+		w.Header().Set("Content-type", "image/png")
+		w.Write(img.Original.Bytes())
+	}
+
 }
 
 func main() {
