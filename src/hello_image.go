@@ -10,7 +10,7 @@ import (
 func hello(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("hello_golang.png")
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
@@ -18,7 +18,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 
 	b, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
