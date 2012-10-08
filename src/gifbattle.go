@@ -42,7 +42,8 @@ type AllImageRequest struct {
 }
 
 type Broadcaster struct {
-	Listeners []*Listener
+	// Using a map like a set
+	Listeners map[*Listener]struct{}
 }
 
 type Listener struct {
@@ -118,7 +119,7 @@ func NewImageStore() *ImageStore {
 
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
-		Listeners: make([]*Listener, 0),
+		Listeners: make(map[*Listener]struct{}),
 	}
 }
 
@@ -127,13 +128,17 @@ func (broadcaster *Broadcaster) NewListener() *Listener {
 		Stream: make(chan string),
 	}
 
-	broadcaster.Listeners = append(broadcaster.Listeners, listener)
+	broadcaster.Listeners[listener] = struct{}{}
 
 	return listener
 }
 
+func (broadcaster *Broadcaster) Remove(listener *Listener) {
+	delete(broadcaster.Listeners, listener)
+}
+
 func (broadcaster *Broadcaster) Send(key string) {
-	for _, listener := range broadcaster.Listeners {
+	for listener := range broadcaster.Listeners {
 		listener.Stream <- key
 	}
 }
@@ -197,6 +202,8 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 	img, err := decodeGif(buf)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
+
+		return
 	}
 
 	key := keyFor(buf.Bytes())
@@ -243,8 +250,7 @@ func streamHandler(ws *websocket.Conn) {
 		log.Printf("Sending message: %s", imgKey)
 		err := websocket.Message.Send(ws, imgKey)
 		if err != nil {
-			// TODO: Remove listener
-			log.Println("Websocket error")
+			broadcaster.Remove(listener)
 			log.Println(err.Error())
 
 			break
