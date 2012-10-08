@@ -54,7 +54,7 @@ var (
 	imageStore  = NewImageStore()
 	broadcaster = NewBroadcaster()
 	templates   = template.Must(template.ParseFiles(
-		"upload.html",
+		"home.html",
 	))
 )
 
@@ -176,10 +176,13 @@ func decodeGif(buf bytes.Buffer) (*Img, error) {
 	return image, nil
 }
 
-func uploadImage(w http.ResponseWriter, r *http.Request) {
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	templates.ExecuteTemplate(w, "home.html", imageStore.All())
+}
+
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		images := imageStore.All()
-		templates.ExecuteTemplate(w, "upload.html", images)
+		http.Redirect(w, r, "/", http.StatusFound)
 
 		return
 	}
@@ -217,7 +220,7 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func displayImage(w http.ResponseWriter, r *http.Request) {
+func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the url params
 	r.ParseForm()
 	key := r.Form.Get("key")
@@ -263,8 +266,9 @@ func main() {
 
 	log.Println("Listening for requests...")
 
-	http.HandleFunc("/", uploadImage)
-	http.HandleFunc("/img", displayImage)
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/upload", uploadHandler)
+	http.HandleFunc("/img", imageHandler)
 	http.Handle("/stream", websocket.Handler(streamHandler))
 	http.ListenAndServe(":5555", nil)
 }
