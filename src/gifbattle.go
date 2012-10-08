@@ -63,7 +63,9 @@ func (store *ImageStore) Start() {
 	for {
 		select {
 		case request := <-store.allChannel:
-			request.ResponseChan <- store.ImageKeys
+			var all []string = make([]string, len(store.ImageKeys))
+			copy(all, store.ImageKeys)
+			request.ResponseChan <- all
 		case request := <-store.getChannel:
 			request.ResponseChan <- store.ImageIndex[request.Key]
 		case request := <-store.putChannel:
@@ -262,6 +264,7 @@ func streamHandler(ws *websocket.Conn) {
 }
 
 func main() {
+	// imageStore is a global
 	go imageStore.Start()
 
 	log.Println("Listening for requests...")
