@@ -8,6 +8,12 @@
 	</style>
 	<script>
 	  var output, websocket;
+
+	  function findWebSocketURL(url) {
+	      var div = document.createElement("div");
+	      div.innerHTML = '<a href="' + url + '"/>';
+	      return decodeURI(div.childNodes[0].href.replace(/^http/, "ws"));
+	  }
 	  
 	  function showMessage(key) {
 	      var li = document.createElement("li");
@@ -27,7 +33,7 @@
 	  function init() {
 	      output = document.getElementById("gifs");
 	      
-	      websocket = new WebSocket("ws://localhost:5555/stream");
+	      websocket = new WebSocket(findWebSocketURL("/stream"));
 	      websocket.onmessage = onMessage;
 	      websocket.onclose = onClose;
 	  }
