@@ -238,11 +238,11 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Form.Get("thumb") == "true" {
 		// Serve the still thumbnail
-		w.Header().Set("Content-type", "image/gif")
+		w.Header().Set("Content-type", "image/png")
 		w.Write(img.Snapshot.Bytes())
 	} else {
 		// Serve the animated gif
-		w.Header().Set("Content-type", "image/png")
+		w.Header().Set("Content-type", "image/gif")
 		w.Write(img.Original.Bytes())
 	}
 
